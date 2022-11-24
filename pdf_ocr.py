@@ -1,6 +1,13 @@
-# Requires Python 3.6 or higher due to f-strings
+'''
+Prerequisite:
+1. brew install tesseract
+2. pip install pytesseract pdf2image pillow
+3. Download trained files from https://github.com/tesseract-ocr/tessdata
+4. Copy "*.traineddata" files to /usr/local/Cellar/tesseract/<version>/share/tessdata
+'''
 
-# Import libraries
+# Credit to https://www.geeksforgeeks.org/python-reading-contents-of-pdf-using-ocr-optical-character-recognition/
+
 import argparse
 from tempfile import TemporaryDirectory
 from pathlib import Path
@@ -14,39 +21,36 @@ def pdf_ocr(input_file, input_lang):
 
     image_file_list = []
 
+    # Name of the output text file.
     text_file = Path(input_file).with_suffix('.txt')
 
-    ''' Main execution point of the program'''
+    # Create a temporary directory to hold our temporary images.
     with TemporaryDirectory() as tempdir:
-        # Create a temporary directory to hold our temporary images.
 
         """
-        Part #1 : Converting PDF to images
+        Part 1 : Converting PDF to images
         """
-        pdf_pages = convert_from_path(input_file, 500)
         # Read in the PDF file at 500 DPI
+        pdf_pages = convert_from_path(input_file, 500)
 
         # Iterate through all the pages stored above
         for page_enumeration, page in enumerate(pdf_pages, start=1):
-            # enumerate() "counts" the pages for us.
 
             # Create a file name to store the image
-            filename = f"{tempdir}\page_{page_enumeration:03}.jpg"
+            image_filename = f"{tempdir}\page_{page_enumeration:03}.jpg"
 
-            # Declaring filename for each page of PDF as JPG
-            # For each page, filename will be:
+            # Declaring filename for each page of PDF as JPG, e.g.:
             # PDF page 1 -> page_001.jpg
             # PDF page 2 -> page_002.jpg
-            # PDF page 3 -> page_003.jpg
             # ....
             # PDF page n -> page_00n.jpg
 
             # Save the image of the page in system
-            page.save(filename, "JPEG")
-            image_file_list.append(filename)
+            page.save(image_filename, "JPEG")
+            image_file_list.append(image_filename)
 
         """
-        Part #2 - Recognizing text from the images using OCR
+        Part 2 : Recognizing text from the images using OCR
         """
         with open(text_file, "a") as output_file:
             # Open the file in append mode so that
@@ -55,40 +59,22 @@ def pdf_ocr(input_file, input_lang):
             # Iterate from 1 to total number of pages
             for image_file in image_file_list:
 
-                # Set filename to recognize text from
-                # Again, these files will be:
-                # page_1.jpg
-                # page_2.jpg
-                # ....
-                # page_n.jpg
-
                 # Recognize the text as string in image using pytesserct
-                text = str(((pytesseract.image_to_string(Image.open(image_file), lang=input_lang))))
+                text = str((pytesseract.image_to_string(Image.open(image_file), lang=input_lang)))
 
-                # The recognized text is stored in variable text
-                # Any string processing may be applied on text
-                # Here, basic formatting has been done:
-                # In many PDFs, at line ending, if a word can't
-                # be written fully, a 'hyphen' is added.
-                # The rest of the word is written in the next line
-                # Eg: This is a sample text this word here GeeksF-
-                # orGeeks is half on first line, remaining on next.
-                # To remove this, we replace every '-\n' to ''.
+                # Remove 'hyphen' for the last word in a line by replacing every '-\n' to ''.
                 text = text.replace("-\n", "")
 
-                # Finally, write the processed text to the file.
+                # Write the processed text to the file.
                 output_file.write(text)
 
-            # At the end of the with .. output_file block
-            # the file is closed after writing all the text.
         # At the end of the with .. tempdir block, the
-        # TemporaryDirectory() we're using gets removed!	
-    # End of main function!
-    
+        # TemporaryDirectory() we're using gets removed.
+
+
 if __name__ == "__main__":
-    # We only want to run this if it's directly executed!
     parser = argparse.ArgumentParser(description='PDF OCR.')
-    parser.add_argument('filename')
+    parser.add_argument('filename', help='Input the file name.')
     parser.add_argument('-l', '--lang', default='eng', choices=['eng', 'chi_tra', 'chi_tra_vert', 'chi_sim', 'chi_sim_vert'])
     args = parser.parse_args()
 
